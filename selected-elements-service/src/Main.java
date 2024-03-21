@@ -1,3 +1,6 @@
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,8 +34,6 @@ import org.polarsys.kitalpha.vp.requirements.Requirements.Requirement;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-// SELECTED_ELEMENTS_SHARE_SERVICE_TARGET_URL
 
 public class Main implements IStartup {
     public class SelectedElement {
@@ -148,14 +149,46 @@ public class Main implements IStartup {
         }
     }
 
+    public static void sendPostRequest(String targetUrl, String jsonInputString) {
+        HttpURLConnection connection = null;
+
+        try {
+            URL url = new URL(targetUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setDoOutput(true);
+
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+
+            int responseCode = connection.getResponseCode();
+
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                System.out.println("POST request failed");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
     @Override
     public void earlyStartup() {
+        String selectedElementsServiceTargetUrl;
+        String capellaCollabSessionId;
         try {
-            String capellaCollabSessionId = System.getenv("CAPELLACOLLAB_SESSION_ID");
+            capellaCollabSessionId = System.getenv("CAPELLACOLLAB_SESSION_ID");
             if (capellaCollabSessionId == null) {
                 throw new IllegalStateException("CAPELLACOLLAB_SESSION_ID environment variable is not set.");
             }
-            String selectedElementsServiceTargetUrl = System.getenv("SELECTED_ELEMENTS_SERVICE_TARGET_URL");
+            selectedElementsServiceTargetUrl = System.getenv("SELECTED_ELEMENTS_SERVICE_TARGET_URL");
             if (selectedElementsServiceTargetUrl == null) {
                 throw new IllegalStateException(
                         "SELECTED_ELEMENTS_SERVICE_TARGET_URL environment variable is not set.");
@@ -173,8 +206,6 @@ public class Main implements IStartup {
                     @Override
                     public void run() {
                         SelectedElementList selectedElementList = new SelectedElementList();
-                        LocalTime currentTime = LocalTime.now();
-                        System.out.println("---------- " + currentTime + " ---------------2");
                         try {
                             IWorkbench workbench = PlatformUI.getWorkbench();
                             if (workbench == null)
@@ -189,78 +220,72 @@ public class Main implements IStartup {
                             Object[] objs = selection.toArray();
                             if (objs == null)
                                 return;
-                            String msg = "", label = "", id = "", modelName = "", modelId = "", modelPath = "";
+                            String label = "", id = "", modelId = "", modelPath = "";
                             for (Object obj : objs) {
                                 IProject project = null;
-                                if (objs.length == 1) {
-                                    if (obj instanceof BasicEObjectImpl) {
-                                        BasicEObjectImpl element = (BasicEObjectImpl) obj;
-                                        Resource resource = element.eResource();
-                                        URI uri = resource.getURI();
-                                        if (uri.isPlatformResource()) {
-                                            String platformString = uri.toPlatformString(true);
-                                            IResource workspaceResource = ResourcesPlugin.getWorkspace().getRoot()
-                                                    .findMember(platformString);
-                                            if (workspaceResource != null) {
-                                                project = workspaceResource.getProject();
-                                                modelName = project.getName();
-                                            }
+                                if (obj instanceof BasicEObjectImpl) {
+                                    BasicEObjectImpl element = (BasicEObjectImpl) obj;
+                                    Resource resource = element.eResource();
+                                    URI uri = resource.getURI();
+                                    if (uri.isPlatformResource()) {
+                                        String platformString = uri.toPlatformString(true);
+                                        IResource workspaceResource = ResourcesPlugin.getWorkspace().getRoot()
+                                                .findMember(platformString);
+                                        if (workspaceResource != null) {
+                                            project = workspaceResource.getProject();
                                         }
                                     }
-                                    if (project != null) {
-                                        Collection<Session> sessions = SessionManager.INSTANCE.getSessions();
-                                        for (Session session : sessions) {
-                                            URI sessionResourceURI = session.getSessionResource().getURI();
-                                            IFile sessionFile = ResourcesPlugin.getWorkspace().getRoot()
-                                                    .getFile(new Path(sessionResourceURI.toPlatformString(true)));
-                                            if (sessionFile != null && sessionFile.getProject().equals(project)) {
-                                                modelPath = sessionFile.getFullPath().toPortableString();
-                                            }
+                                }
+                                if (project != null) {
+                                    Collection<Session> sessions = SessionManager.INSTANCE.getSessions();
+                                    for (Session session : sessions) {
+                                        URI sessionResourceURI = session.getSessionResource().getURI();
+                                        IFile sessionFile = ResourcesPlugin.getWorkspace().getRoot()
+                                                .getFile(new Path(sessionResourceURI.toPlatformString(true)));
+                                        if (sessionFile != null && sessionFile.getProject().equals(project)) {
+                                            modelPath = sessionFile.getFullPath().toPortableString();
                                         }
                                     }
-                                    EObject currentElement = (EObject) obj;
-                                    while (currentElement != null && !(currentElement instanceof SystemEngineering)) {
-                                        currentElement = currentElement.eContainer();
-                                    }
-                                    if (currentElement instanceof SystemEngineering) {
-                                        SystemEngineering systemEngineering = (SystemEngineering) currentElement;
-                                        modelId = systemEngineering.getId();
-                                    }
+                                }
+                                EObject currentElement = (EObject) obj;
+                                while (currentElement != null && !(currentElement instanceof SystemEngineering)) {
+                                    currentElement = currentElement.eContainer();
+                                }
+                                if (currentElement instanceof SystemEngineering) {
+                                    SystemEngineering systemEngineering = (SystemEngineering) currentElement;
+                                    modelId = systemEngineering.getId();
                                 }
                                 if (obj instanceof ModelElement) {
                                     ModelElement element = (ModelElement) obj;
                                     label = element.getLabel();
                                     id = element.getId();
-                                    msg += "\n" + id + ": (" + obj.getClass().getSimpleName() + ") \"" + label + "\"";
                                 } else if (obj instanceof Module) {
                                     Module element = (Module) obj;
                                     label = element.getReqIFName();
                                     id = element.getId();
-                                    msg += "\n" + id + ": (" + obj.getClass().getSimpleName() + ") \"" + label + "\"";
                                 } else if (obj instanceof RecCatalog) {
                                     RecCatalog element = (RecCatalog) obj;
                                     label = element.getName();
                                     id = element.getId();
-                                    msg += "\n" + id + ": (" + obj.getClass().getSimpleName() + ") \"" + label + "\"";
                                 } else if (obj instanceof Requirement) {
                                     Requirement element = (Requirement) obj;
                                     label = element.getReqIFName();
                                     id = element.getId();
-                                    msg += "\n" + id + ": (" + obj.getClass().getSimpleName() + ") \"" + label + "\"";
                                 } else if (obj instanceof DRepresentationDescriptor) {
                                     DRepresentationDescriptor element = (DRepresentationDescriptor) obj;
                                     label = element.getName();
                                     id = element.getUid();
-                                    msg += "\n" + id + ": (" + obj.getClass().getSimpleName() + ") \"" + label + "\"";
                                 }
                                 SelectedElement selectedElement = new SelectedElement(id, label, modelId, modelPath);
                                 selectedElementList.addElement(selectedElement);
-                                boolean selectionChanged = !selectedElementList.equals(prevSelectedElementList);
-                                if (selectionChanged) {
-                                    ObjectMapper mapper = new ObjectMapper();
-                                    String json = mapper.writeValueAsString(selectedElementList);
-                                    System.out.println(json);
-                                }
+                            }
+                            boolean selectionChanged = !selectedElementList.equals(prevSelectedElementList);
+                            if (selectionChanged) {
+                                ObjectMapper mapper = new ObjectMapper();
+                                String json = mapper.writeValueAsString(selectedElementList);
+                                String targetUrl = selectedElementsServiceTargetUrl + "?capellacollab_session_id="
+                                        + capellaCollabSessionId;
+                                sendPostRequest(targetUrl, json);
                             }
                         } catch (Exception e) {
                             e.printStackTrace();

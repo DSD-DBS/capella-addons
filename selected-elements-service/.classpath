@@ -6,7 +6,9 @@
   <classpathentry kind="lib" path="/home/nörd/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.13.3/jackson-annotations-2.13.3.jar"/>
   <classpathentry kind="lib" path="/home/nörd/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.13.3/jackson-core-2.13.3.jar"/>
   <classpathentry kind="lib" path="/home/nörd/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.13.3/jackson-databind-2.13.3.jar"/>
-  <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/1166/0/.cp/lib/gson-2.10.1.jar"/>
+  <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/1168/0/.cp/lib/jackson-annotations-2.13.3.jar"/>
+  <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/1168/0/.cp/lib/jackson-core-2.13.3.jar"/>
+  <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/1168/0/.cp/lib/jackson-databind-2.13.3.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/297/0/.cp/jdtCompilerAdapter.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/309/0/.cp/lib/launchingsupport.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/configuration/org.eclipse.osgi/82/0/.cp/lib/loggers.jar"/>
@@ -162,6 +164,7 @@
   <classpathentry kind="lib" path="/opt/capella_6.0.0/dropins/SubsystemTransition/eclipse/plugins/org.polarsys.capella.transition.system2subsystem.multiphases_1.6.0.202206161409.jar" sourcepath="/opt/capella_6.0.0/dropins/SubsystemTransition/eclipse/plugins/org.polarsys.capella.transition.system2subsystem.multiphases.source_1.6.0.202206161409.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/dropins/SubsystemTransition/eclipse/plugins/org.polarsys.capella.transition.system2subsystem.ui_1.6.0.202206161409.jar" sourcepath="/opt/capella_6.0.0/dropins/SubsystemTransition/eclipse/plugins/org.polarsys.capella.transition.system2subsystem.ui.source_1.6.0.202206161409.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/dropins/SubsystemTransition/eclipse/plugins/org.polarsys.capella.transition.system2subsystem_1.6.0.202206161409.jar" sourcepath="/opt/capella_6.0.0/dropins/SubsystemTransition/eclipse/plugins/org.polarsys.capella.transition.system2subsystem.source_1.6.0.202206161409.jar"/>
+  <classpathentry kind="lib" path="/opt/capella_6.0.0/dropins/com.deutschebahn.selected-elements-service_0.0.1.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/plugins/ca.odell.glazedlists_1.11.0.v20190926-1838.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/plugins/ch.qos.logback.classic_1.2.3.v20200428-2012.jar"/>
   <classpathentry kind="lib" path="/opt/capella_6.0.0/plugins/ch.qos.logback.core_1.2.3.v20200428-2012.jar"/>

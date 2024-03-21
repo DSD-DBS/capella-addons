@@ -6,6 +6,7 @@ Bundle-Version: 0.0.1
 Automatic-Module-Name: com.deutschebahn
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-Vendor: DB InfraGO AG
+Eclipse-BuddyPolicy: global
 Bundle-ClassPath: .,lib/jackson-annotations-2.13.3.jar,
  lib/jackson-core-2.13.3.jar,lib/jackson-databind-2.13.3.jar
 Import-Package: org.eclipse.core.resources,
