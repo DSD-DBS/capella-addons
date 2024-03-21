@@ -1,0 +1,7 @@
+*.class
+*.jar
+.factorypath
+.mypy_cache/
+.settings/
+lib/
+target/

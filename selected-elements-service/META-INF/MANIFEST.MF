@@ -1,0 +1,24 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Selected Elements Service
+Bundle-SymbolicName: selected-elements-service;singleton:=true
+Bundle-Version: 0.0.1
+Automatic-Module-Name: com.deutschebahn
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-Vendor: DB InfraGO AG
+Bundle-ClassPath: .,lib/jackson-annotations-2.13.3.jar,
+ lib/jackson-core-2.13.3.jar,lib/jackson-databind-2.13.3.jar
+Import-Package: org.eclipse.core.resources,
+ org.eclipse.core.runtime,
+ org.eclipse.emf.common.util,
+ org.eclipse.emf.ecore,
+ org.eclipse.emf.ecore.impl,
+ org.eclipse.emf.ecore.resource,
+ org.eclipse.jface.viewers,
+ org.eclipse.sirius.business.api.session,
+ org.eclipse.sirius.viewpoint,
+ org.eclipse.ui,
+ org.polarsys.capella.common.data.modellingcore,
+ org.polarsys.capella.common.re,
+ org.polarsys.capella.core.data.capellamodeller,
+ org.polarsys.kitalpha.vp.requirements.Requirements

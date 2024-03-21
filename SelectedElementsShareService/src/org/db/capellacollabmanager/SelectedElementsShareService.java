@@ -30,7 +30,7 @@ import org.polarsys.kitalpha.vp.requirements.Requirements.Requirement;
 
 import com.google.gson.Gson;
 
-public class SelectedElementsBroadCastService implements IStartup {
+public class SelectedElementsShareService implements IStartup {
     final Gson gson = new Gson();
     @Override
     public void earlyStartup() {

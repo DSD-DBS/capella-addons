@@ -4,7 +4,7 @@
    <extension
          point="org.eclipse.ui.startup">
       <startup
-            class="org.db.capellacollabmanager.SelectedElementsBroadCastService">
+            class="org.db.capellacollabmanager.SelectedElementsShareService">
       </startup>
    </extension>
 
