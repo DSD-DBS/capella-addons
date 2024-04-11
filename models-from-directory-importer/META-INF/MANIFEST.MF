@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Models from directory importer
+Bundle-SymbolicName: models-from-directory-importer;singleton:=true
+Bundle-Version: 0.0.1
+Automatic-Module-Name: com.deutschebahn
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-Vendor: DB InfraGO AG
+Eclipse-BuddyPolicy: global
+Bundle-ClassPath: .
+Import-Package: org.eclipse.ui,org.eclipse.core.runtime
