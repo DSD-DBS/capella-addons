@@ -1,7 +1,6 @@
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -182,12 +181,7 @@ public class Main implements IStartup {
     @Override
     public void earlyStartup() {
         String selectedElementsServiceTargetUrl;
-        String capellaCollabSessionId;
         try {
-            capellaCollabSessionId = System.getenv("CAPELLACOLLAB_SESSION_ID");
-            if (capellaCollabSessionId == null) {
-                throw new IllegalStateException("CAPELLACOLLAB_SESSION_ID environment variable is not set.");
-            }
             selectedElementsServiceTargetUrl = System.getenv("SELECTED_ELEMENTS_SERVICE_TARGET_URL");
             if (selectedElementsServiceTargetUrl == null) {
                 throw new IllegalStateException(
@@ -283,9 +277,7 @@ public class Main implements IStartup {
                             if (selectionChanged) {
                                 ObjectMapper mapper = new ObjectMapper();
                                 String json = mapper.writeValueAsString(selectedElementList);
-                                String targetUrl = selectedElementsServiceTargetUrl + "?capellacollab_session_id="
-                                        + capellaCollabSessionId;
-                                sendPostRequest(targetUrl, json);
+                                sendPostRequest(selectedElementsServiceTargetUrl, json);
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
