@@ -15,6 +15,7 @@ RUN dnf --color yes --refresh -y install \
   java-17-openjdk-devel \
   maven \
   python3-pip \
+  unzip \
   zsh
 # }}}
 # configure terminal {{{
