@@ -50,7 +50,7 @@ def _third_party_lib_paths() -> list[pathlib.Path]:
     classpath_root = _read_xml_file(".classpath")
     third_party_lib_paths = classpath_root.xpath(
         'classpathentry[@kind="lib" and '
-        'not(starts-with(@path, "/opt/capella_6.0.0"))]/@path'
+        'not(starts-with(@path, "/opt/capella"))]/@path'
     )
     return sorted([pathlib.Path(p) for p in third_party_lib_paths])
 
