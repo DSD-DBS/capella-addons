@@ -38,8 +38,21 @@ Precondition:
       -v /tmp/.X11-unix:/tmp/.X11-unix (...)
   ```
 
-Store some Capella development project locally at `/tmp/dev`. You may want to
-command
+### Run container on Windows using WSL and WSLg
+
+Precondition: Install WSL and a distribution of your choice.
+
+Due to a bug in WSLg, the X11 socket sometimes doesn't get mounted properly. We
+can work around this by directly using the source path:
+
+```bash
+docker run (...) -v /mnt/wslg/.X11-unix:/tmp/.X11-unix (...)
+```
+
+### Work on a Capella plugin project
+
+Store some Capella development project locally at `/tmp/projects`.
+You may want to command
 
 ```bash
 mkdir /tmp/dev
