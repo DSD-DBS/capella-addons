@@ -1,7 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 
-FROM fedora:38
+FROM fedora:40
 LABEL maintainer "Jamil André RAICHOUNI <jamil.raichouni@deutschebahn.com>"
 
 # system pkg manager installs {{{
@@ -66,7 +66,6 @@ RUN curl -L -o jdt-language-server.tar.gz \
   chown -R root:root .
 ENV PATH=/opt/eclipse.jdt.ls/bin:$PATH
 # }}}
-ENV DISPLAY="host.docker.internal:0.0"
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
 RUN mkdir -p /workspaces/RUNTIME && mkdir /root/projects
 RUN echo -e "source /root/.venv/bin/activate" >> /root/.zshrc
