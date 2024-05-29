@@ -23,9 +23,6 @@ return {
         "neovim/nvim-lspconfig",
         event = "VeryLazy",
         config = function() require("config.nvim-lspconfig") end,
-        enabled = function()
-            return os.getenv("HOSTNAME") == "devcontainer"
-        end
     },
     {
         -- https://github.com/tpope/vim-surround
