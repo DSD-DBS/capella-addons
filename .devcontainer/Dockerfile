@@ -67,7 +67,7 @@ RUN curl -L -o jdt-language-server.tar.gz \
 ENV PATH=/opt/eclipse.jdt.ls/bin:$PATH
 # }}}
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
-RUN mkdir -p /workspaces/RUNTIME && mkdir /root/dev
+RUN mkdir -p /workspaces/RUNTIME && mkdir /root/projects
 RUN echo -e "source /root/.venv/bin/activate" >> /root/.zshrc
-WORKDIR /root/dev
+WORKDIR /root/projects
 ENTRYPOINT ["/bin/zsh"]

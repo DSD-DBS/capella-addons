@@ -55,10 +55,10 @@ Store some Capella development project locally at `/tmp/projects`.
 You may want to command
 
 ```bash
-mkdir /tmp/dev
+mkdir /tmp/projects
 git clone --branch feat-models-from-directory-importer \
   git@github.com:DSD-DBS/capella-addons.git \
-  /tmp/dev/capella-addons
+  /tmp/projects/capella-addons
 ```
 
 Run the container via the following command where a Capella is mounted to
@@ -74,13 +74,13 @@ or aarch64 depending on the Docker host) is mounted to `/opt/capella`:
 ```bash
 docker run --rm -it --hostname=devcontainer \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /tmp/dev:/root/dev \
+  -v /tmp/projects:/root/projects \
   -v /path/on/host/to/a/capella[\.app]?:/opt/capella \
   capella-plugins-dev
 # for example:
 docker run --rm -it --hostname=devcontainer \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /tmp/dev:/root/dev \
+  -v /tmp/projects:/root/projects \
   -v /Users/jamilraichouni/Applications/Capella_6.0.0.app:/opt/capella \
   capella-plugins-dev
 ```
