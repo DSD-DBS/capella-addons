@@ -15,7 +15,7 @@ dap.configurations.java = {
         type = "java",
         javaExec = "java",
         args =
-        "-product org.polarsys.capella.rcp.product -launcher /opt/capella/capella -name Eclipse -data /workspaces/RUNTIME --add-modules=ALL-SYSTEM -os linux -ws gtk -arch aarch64 -nl en_US -clean -consoleLog -debug",
+        "-product org.polarsys.capella.rcp.product -launcher /opt/capella/capella -name Eclipse -data /workspaces/RUNTIME --add-modules=ALL-SYSTEM -os linux -ws gtk -arch " .. vim.fn.system("uname -m") .. " -nl en_US -clean -consoleLog -debug",
         vmArgs =
         "-XX:+ShowCodeDetailsInExceptionMessages -Dorg.eclipse.swt.graphics.Resource.reportNonDisposed=true -Declipse.pde.launch=true -Dfile.encoding=UTF-8",
         classPaths = {
