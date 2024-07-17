@@ -39,6 +39,8 @@ COPY init.lua /root/.config/nvim/lua
 COPY plugins.lua /root/.config/nvim/lua
 COPY nvim-cmp.lua /root/.config/nvim/lua/config
 COPY nvim-lspconfig.lua /root/.config/nvim/lua/config
+RUN nvim --headless -c'source ~/.config/nvim/init.vim' -c'Lazy! install' -c'qa'
+RUN nvim --headless -c'TSInstallSync java' -c'q'
 COPY eclipse_plugin_builders.py /opt/eclipse_plugin_builders.py
 RUN python3 -m venv /root/.venv && /root/.venv/bin/pip install click lxml
 # }}}
