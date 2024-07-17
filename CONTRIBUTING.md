@@ -44,7 +44,7 @@ Precondition:
 - Run a container via
 
   ```bash
-  docker run (...) -v /tmp/.X11-unix:/tmp/.X11-unix (...)
+  docker run (...) -e DISPLAY="host.docker.internal:0.0" -v /tmp/.X11-unix:/tmp/.X11-unix (...)
   ```
 
 ### Run container on Windows using WSL and WSLg
@@ -55,7 +55,7 @@ Due to a bug in WSLg, the X11 socket sometimes doesn't get mounted properly. We
 can work around this by directly using the source path:
 
 ```bash
-docker run (...) -v /mnt/wslg/.X11-unix:/tmp/.X11-unix (...)
+docker run (...) -e DISPLAY=":0" -v /mnt/wslg/.X11-unix:/tmp/.X11-unix (...)
 ```
 
 ### Work on a Capella plugin project
