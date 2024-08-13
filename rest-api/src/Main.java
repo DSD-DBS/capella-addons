@@ -1,3 +1,6 @@
+// Copyright DB InfraGO AG and contributors
+// SPDX-License-Identifier: Apache-2.0
+
 import org.eclipse.ui.IStartup;
 
 public class Main implements IStartup {
