@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -61,11 +62,6 @@ PATH_BLACKLIST = (
 
 
 @click.group()
-@click.version_option(
-    version=capella_addons.__version__,
-    prog_name="eclipse-plugin-builders",
-    message="%(prog)s %(version)s",
-)
 @click.option(
     "-v",
     "--verbose",
@@ -76,6 +72,11 @@ PATH_BLACKLIST = (
     callback=lambda _, __, x: logging.getLogger().setLevel(
         logging.DEBUG if x else logging.INFO
     ),
+)
+@click.version_option(
+    version=capella_addons.__version__,
+    prog_name="capella-addons",
+    message="%(prog)s %(version)s",
 )
 def main() -> None:
     """Console tools to develop, build, pack, and deploy Capella addons.
@@ -109,8 +110,7 @@ def _third_party_lib_paths() -> list[pathlib.Path]:
     """Return the paths to the third-party libraries."""
     classpath_root = _read_xml_file(".classpath")
     third_party_lib_paths = classpath_root.xpath(
-        'classpathentry[@kind="lib" and '
-        'not(starts-with(@path, "/opt/capella_6.0.0"))]/@path'
+        'classpathentry[@kind="lib"]/@path'
     )
     return sorted([pathlib.Path(p) for p in third_party_lib_paths])
 
@@ -126,7 +126,26 @@ def compute_jar_name() -> str:
     group_id = group_id[0].text if group_id else "unknown"
     artifact_id = artifact_id[0].text if artifact_id else "unknown"
     version = version[0].text if version else "unknown"
-    return f"{group_id}.{artifact_id}_{version}.jar"
+
+    # Determine the operating system
+    os_name = platform.system().lower()
+    if os_name == "darwin":
+        os_name = "macos"
+
+    # Determine the architecture
+    architecture = platform.machine().lower()
+    if architecture in ["x86_64", "amd64"]:
+        architecture = "x64"
+    elif architecture in ["i386", "i686"]:
+        architecture = "x86"
+    elif architecture.startswith("arm"):
+        architecture = "arm"
+
+    jar_name = (
+        f"{group_id}.{artifact_id}_{version}_{os_name}_{architecture}.jar"
+    )
+    logger.debug("Computed jar name: %s", jar_name)
+    return jar_name
 
 
 def _output_and_jar_path() -> tuple[pathlib.Path, pathlib.Path]:
@@ -615,6 +634,7 @@ def build_workspace(
             status = response.get("result", BuildWorkspaceStatus.FAILED.value)
             if status == BuildWorkspaceStatus.SUCCEED.value:
                 click.echo("Build of workspace succeeded.")
+                sys.exit(0)
             elif status == BuildWorkspaceStatus.CANCELLED.value:
                 click.echo("Build of workspace cancelled.")
             elif status == BuildWorkspaceStatus.WITH_ERROR.value:
@@ -651,7 +671,7 @@ def deploy(target_path: pathlib.Path) -> None:
 
 
 def _get_bundle_classpath(third_party_lib_paths: list[pathlib.Path]) -> str:
-    lib_paths = sorted([p.name for p in _third_party_lib_paths()])
+    lib_paths = sorted([p.name for p in third_party_lib_paths])
     value = "."
     if third_party_lib_paths:
         value = ".,\n"
@@ -689,7 +709,12 @@ def _update_bundle_classpath(
 
 @main.command()
 @click.argument("java_home", type=click.Path(exists=True, dir_okay=True))
-def package(java_home: pathlib.Path) -> None:
+@click.argument(
+    "target_platform_path", type=click.Path(exists=True, dir_okay=True)
+)
+def package(
+    java_home: pathlib.Path, target_platform_path: pathlib.Path
+) -> None:
     """Package the eclipse plugin.
 
     \b
@@ -697,12 +722,20 @@ def package(java_home: pathlib.Path) -> None:
     ---------
     java_home : pathlib.Path
         The path to the Java home directory.
+    target_platform_path
+        The installation directory of an Eclipse/ Capella application
+        that will be referenced as target platform to build the
+        classpath.
     """  # noqa: D301
     lib_dir = pathlib.Path("lib")
     if lib_dir.is_dir():
         shutil.rmtree(lib_dir)
     lib_dir.mkdir()
-    third_party_lib_paths = _third_party_lib_paths()
+    third_party_lib_paths = [
+        p
+        for p in _third_party_lib_paths()
+        if not p.is_relative_to(target_platform_path)
+    ]
     if third_party_lib_paths:
         for path in third_party_lib_paths:
             dest = lib_dir / path.name
@@ -714,6 +747,7 @@ def package(java_home: pathlib.Path) -> None:
             click.echo(f"`{path}` file not found.")
             sys.exit(1)
     output_path, jar_path = _output_and_jar_path()
+    logger.info("Packaging the addon into `%s`...", jar_path)
     jar_path.unlink(missing_ok=True)
     jar = pathlib.Path(java_home) / "bin" / "jar"
     jar_cmd = [

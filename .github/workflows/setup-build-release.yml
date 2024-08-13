@@ -1,0 +1,131 @@
+# SPDX-FileCopyrightText: Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: CC0-1.0
+on:
+  push:
+    tags: ["*/v*.*.*"]  # tags must be <addon-name>/v<version>
+  pull_request:
+    branches: [main]
+jobs:
+  setup-build-release:
+    name: Setup, build, and release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        capella-version: [6.0.0, 7.0.0]
+        include:
+          - capella-version: 6.0.0
+            java-execution-environment: JavaSE-17
+            jdk-version: 17.0.6+10
+          - capella-version: 7.0.0
+            java-execution-environment: JavaSE-17
+            jdk-version: 17.0.11+9
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up `capella-addons` CLI tool
+        run: pip install . && pip show capella-addons
+      - name: Identify addon and version
+        id: identify_addon_and_version
+        run: |
+          echo "GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}"
+          echo "GITHUB_REF_NAME=${GITHUB_REF_NAME}"
+          VERSION=""
+          if [ ${GITHUB_EVENT_NAME} = "pull_request" ]; then
+            ADDON=${GITHUB_BASE_REF}
+          elif [ ${GITHUB_EVENT_NAME} = "push" ]; then
+            if [[ ${GITHUB_REF_TYPE} == "tag" ]]; then
+              echo "This push is a tag: ${GITHUB_REF_NAME}"
+              ADDON=$(echo "${GITHUB_REF_NAME}" | sed 's|/.*||')  # `sed` with `|` as delimiter
+              VERSION=$(echo "${GITHUB_REF_NAME}" | sed 's|[^/.]*/v||')
+            else
+              echo "This push is not a tag."
+              ADDON=${GITHUB_REF_NAME}
+              VERSION=$(python -m capella_addons --version | cut -d' ' -f2)
+            fi
+          fi
+          echo "addon=${ADDON}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Identified addon: ${ADDON}"
+      - name: Set addon version
+        run: |
+          sed -i 's|<version>VERSION</version>|<version>${{ steps.identify_addon_and_version.outputs.version }}</version>|g' ${{ steps.identify_addon_and_version.outputs.addon }}/pom.xml
+          sed -i 's/^Bundle-Version.*/Bundle-Version: ${{ steps.identify_addon_and_version.outputs.version }}/' ${{ steps.identify_addon_and_version.outputs.addon }}/META-INF/MANIFEST.MF
+      - name: Set up Capella from ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella-version }}-selected-dropins-main
+        run: |
+          docker pull ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella-version }}-selected-dropins-main
+          if [ ! -d /tmp/capella_${{ matrix.capella-version }} ]; then
+            docker run --platform=linux/x86_64 --rm -v /tmp:/tmp --entrypoint="" --user=root \
+              ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella-version }}-selected-dropins-main \
+              bash -c "cp -r /opt/capella /tmp/capella_${{ matrix.capella-version }}"
+          fi
+      - name: Build `.classpath` file
+        run: |
+          cd ${{ steps.identify_addon_and_version.outputs.addon }}
+          python -m capella_addons build-classpath \
+            --java-execution-environment=${{ matrix.java-execution-environment }} \
+            $(find src -type f -name "Main.java") \
+            /tmp/capella_${{ matrix.capella-version }}
+      - name: Set up OpenAPI generator
+        if: steps.identify_addon_and_version.outputs.addon == 'rest-api'
+        run: |
+          curl -Lo /opt/openapi-generator.jar \
+            https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/7.9.0/openapi-generator-cli-7.9.0.jar
+          echo "java -jar /opt/openapi-generator.jar \$@" > /usr/local/bin/openapi-generator
+          chmod +x /usr/local/bin/openapi-generator
+      - name: Run OpenAPI generator
+        if: steps.identify_addon_and_version.outputs.addon == 'rest-api'
+        run: |
+          cd ${{ steps.identify_addon_and_version.outputs.addon }}
+          bash bin/jaxrs-jersey.zsh
+          rm -rf /tmp/src; cp -r src /tmp
+      - name: Set up Eclipse Temurin JDK ${{ matrix.jdk-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.jdk-version }}
+          distribution: 'temurin'
+          java-package: "jdk"
+      - name: Set up Eclipse JDT language server 1.40.0
+        run: |
+          if [ ! -d /tmp/jdtls ]; then mkdir /tmp/jdtls; fi
+          cd /tmp/jdtls
+          if [ ! -f jdtls.tar.gz ]; then
+            curl -Lo jdtls.tar.gz \
+              https://download.eclipse.org/jdtls/milestones/1.40.0/jdt-language-server-1.40.0-202409261450.tar.gz
+          fi
+          tar xzf jdtls.tar.gz
+          rm *.tar.gz
+      - name: Build workspace
+        run: |
+          cd ${{ steps.identify_addon_and_version.outputs.addon }}
+          rm -rf target
+          python -m capella_addons -v \
+          build-workspace \
+          --java-execution-environment=${{ matrix.java-execution-environment }} \
+          $JAVA_HOME /tmp/jdtls
+      - name: Package addon
+        run: |
+          cd ${{ steps.identify_addon_and_version.outputs.addon }}
+          python -m capella_addons -v \
+          package \
+          $JAVA_HOME \
+          /tmp/capella_${{ matrix.capella-version }}
+      - name: Include Capella version in JAR file name
+        run: |
+          cd ${{ steps.identify_addon_and_version.outputs.addon }}
+          for file in target/*.jar; do
+            mv "$file" "${file%.jar}_capella_${{ matrix.capella-version }}.jar"
+          done
+      - name: Create release
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          name: ${{ steps.identify_addon_and_version.outputs.addon }} ${{ steps.identify_addon_and_version.outputs.version }}
+          artifacts: ${{ steps.identify_addon_and_version.outputs.addon }}/target/*.jar
+          allowUpdates: true
+          tag: ${{ github.ref_name }}
+          draft: false
+          prerelease: false

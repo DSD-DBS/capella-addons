@@ -1,0 +1,16 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: CC0-1.0
+
+*.class
+*.jar
+.factorypath
+.mypy_cache/
+.openapi-generator/
+.settings/
+lib/
+openapitools.json
+src/com/db/capella/api/*.java
+src/com/db/capella/api/factories/
+!src/com/db/capella/api/JacksonJsonProvider.java
+src/com/db/capella/model/
+target/

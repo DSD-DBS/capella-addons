@@ -1,0 +1,18 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: CC0-1.0
+
+# keep our custom files
+README.md
+pom.xml
+src/com/db/capella/Main.java
+
+# keep our customized JacksonJsonProvider with
+# indention and ordered keys for the JSON output returned by the API
+src/com/db/capella/api/JacksonJsonProvider.java
+
+# do not overwrite code where we implement the magic!
+# src/com/db/capella/api/impl/
+src/com/db/capella/api/impl/ProjectsApiServiceImpl.java
+
+# do not generate src/main/webapp/
+src/main/

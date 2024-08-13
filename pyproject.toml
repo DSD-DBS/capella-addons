@@ -5,11 +5,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm[toml]>=3.4", "wheel"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-dynamic = ["version"]
+version = "0.1.0"
 
 name = "capella-addons"
 description = "Tools to develop Capella addons"
@@ -162,6 +162,3 @@ zip-safe = false
 
 [tool.setuptools.packages.find]
 include = ["capella_addons", "capella_addons.*"]
-
-[tool.setuptools_scm]
-# This section must exist for setuptools_scm to work
