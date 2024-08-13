@@ -37,6 +37,9 @@ dependencies = [
   "lxml"
 ]
 
+[project.scripts]
+capella-addons = "capella_addons.__main__:main"
+
 [project.urls]
 Homepage = "https://github.com/DSD-DBS/capella-addons"
 # Documentation = ""
@@ -160,8 +163,8 @@ max-complexity = 14
 platforms = ["any"]
 zip-safe = false
 
-[tool.setuptools.packages.find]
-include = ["capella_addons", "capella_addons.*"]
-
 [tool.setuptools_scm]
 # This section must exist for setuptools_scm to work
+
+[tool.setuptools.packages.find]
+include = ["capella_addons", "capella_addons.*"]

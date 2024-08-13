@@ -1,0 +1,155 @@
+# SPDX-FileCopyrightText: Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: CC0-1.0
+on:
+  push:
+    tags: ["*/v*.*.*"]  # tags must be <addon-name>/v<version>
+  pull_request:
+    branches: [main]
+env:
+  JDT_LANGUAGE_SERVER_VERSION: "1.40.0"
+  MAVEN_VERSION: "3.9.6"
+  OPENAPI_GENERATOR_VERSION: "7.9.0"
+  PYTHON_VERSION: "3.12"
+jobs:
+  setup-build-release:
+    name: Setup, build, and release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - capella-version: 6.0.0
+            java-execution-environment: JavaSE-17
+            jdk-version: 17.0.6+10
+          - capella-version: 7.0.0
+            java-execution-environment: JavaSE-17
+            jdk-version: 17.0.11+9
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up `capella-addons` CLI tool
+        run: pip install . && pip show capella-addons
+      - name: Identify addon and version
+        id: identify_addon_and_version
+        run: |
+          echo "GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}"
+          echo "GITHUB_REF_NAME=${GITHUB_REF_NAME}"
+          VERSION=""
+          if [ ${GITHUB_EVENT_NAME} = "pull_request" ]; then
+            ADDON=${GITHUB_HEAD_REF}
+          elif [ ${GITHUB_EVENT_NAME} = "push" ]; then
+            if [[ ${GITHUB_REF_TYPE} == "tag" ]]; then
+              echo "This push is a tag: ${GITHUB_REF_NAME}"
+              ADDON=$(echo "${GITHUB_REF_NAME}" | sed 's|/.*||')  # `sed` with `|` as delimiter
+              VERSION=$(echo "${GITHUB_REF_NAME}" | sed 's|[^/.]*/v||')
+            else
+              echo "This push is not a tag."
+              ADDON=${GITHUB_REF_NAME}
+              VERSION=$(capella-addons --version | cut -d' ' -f2)
+            fi
+          fi
+          echo "addon=${ADDON}" >> $GITHUB_ENV
+          echo "version=${VERSION}" >> $GITHUB_ENV
+          echo "Identified addon: ${ADDON}"
+          echo "Identified version: ${VERSION}"
+      - name: Set addon version
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        run: |
+          sed -i "s/^Bundle-Version.*/Bundle-Version: ${version}/" \
+            ${addon}/META-INF/MANIFEST.MF
+          head -n 10 \
+            ${addon}/META-INF/MANIFEST.MF
+          python - <<EOF
+          from lxml import etree  # lxml has been installed as dependency of capella-addons above
+          tree = etree.parse("${addon}/pom.xml")
+          tree.find(".//{http://maven.apache.org/POM/4.0.0}version").text = "${version}"
+          tree.write("${addon}/pom.xml", xml_declaration=True, encoding="UTF-8")
+          EOF
+          grep --color -B10 \
+            "<version>${version}</version>" \
+            ${addon}/pom.xml
+          exit $?
+      - name: Set up Capella from ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella-version }}-selected-dropins-main
+        run: |
+          # using `act` to test this action locally, the directory `/tmp/capella_${{ matrix.capella-version }}` may already exist
+          if [ ! -d /tmp/capella_${{ matrix.capella-version }} ]; then
+            docker pull ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella-version }}-selected-dropins-main
+            docker run --platform=linux/x86_64 --rm -v /tmp:/tmp --entrypoint="" --user=root \
+              ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella-version }}-selected-dropins-main \
+              bash -c "cp -r /opt/capella /tmp/capella_${{ matrix.capella-version }}"
+          fi
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: ${{ env.MAVEN_VERSION }}
+      - name: Build `.classpath` file
+        run: |
+          cd ${addon}
+          capella-addons build-classpath \
+            --java-execution-environment=${{ matrix.java-execution-environment }} \
+            $(find src -type f -name "Main.java") \
+            /tmp/capella_${{ matrix.capella-version }}
+      - name: Set up OpenAPI generator
+        if: ${{ env.addon == 'rest-api' }}
+        run: |
+          curl -Lo /opt/openapi-generator.jar \
+            https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${{ env.OPENAPI_GENERATOR_VERSION }}/openapi-generator-cli-${{ env.OPENAPI_GENERATOR_VERSION }}.jar
+          echo "java -jar /opt/openapi-generator.jar \$@" > /usr/local/bin/openapi-generator
+          chmod +x /usr/local/bin/openapi-generator
+      - name: Run OpenAPI generator
+        if: ${{ env.addon == 'rest-api' }}
+        run: |
+          cd ${addon}
+          bash bin/jaxrs-jersey.zsh
+          rm -rf /tmp/src; cp -r src /tmp
+      - name: Set up Eclipse Temurin JDK ${{ matrix.jdk-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.jdk-version }}
+          distribution: 'temurin'
+          java-package: "jdk"
+      - name: Set up Eclipse JDT language server ${{ env.JDT_LANGUAGE_SERVER_VERSION }}
+        run: |
+          if [ ! -d /tmp/jdtls ]; then mkdir /tmp/jdtls; fi
+          cd /tmp/jdtls
+          if [ ! -f jdtls.tar.gz ]; then
+            filename=$(curl -s https://download.eclipse.org/jdtls/milestones/${{ env.JDT_LANGUAGE_SERVER_VERSION }}/latest.txt)
+            curl -Lo jdtls.tar.gz \
+              "https://download.eclipse.org/jdtls/milestones/${{ env.JDT_LANGUAGE_SERVER_VERSION }}/${filename}"
+          fi
+          tar xzf jdtls.tar.gz
+          rm *.tar.gz
+      - name: Build workspace
+        run: |
+          cd ${addon}
+          rm -rf target
+          capella-addons -v \
+            build-workspace \
+            --java-execution-environment=${{ matrix.java-execution-environment }} \
+            $JAVA_HOME /tmp/jdtls
+      - name: Package addon
+        run: |
+          cd ${addon}
+          capella-addons -v \
+            package \
+            $JAVA_HOME \
+            /tmp/capella_${{ matrix.capella-version }}
+      - name: Include Capella version in JAR file name
+        run: |
+          cd ${addon}
+          for file in target/*.jar; do
+            mv "$file" "${file%.jar}_capella_${{ matrix.capella-version }}.jar"
+          done
+      - name: Create release
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          name: ${addon} ${version}
+          artifacts: ${addon}/target/*.jar
+          allowUpdates: true
+          tag: ${{ github.ref_name }}
+          draft: false
+          prerelease: false

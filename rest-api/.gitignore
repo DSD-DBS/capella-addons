@@ -1,0 +1,8 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: CC0-1.0
+
+.openapi-generator/
+src/com/deutschebahn/capella/api/*.java
+src/com/deutschebahn/capella/api/factories/
+!src/com/deutschebahn/capella/api/JacksonJsonProvider.java
+src/com/deutschebahn/capella/model/
