@@ -5,6 +5,8 @@
 *.jar
 .factorypath
 .mypy_cache/
+.openapi-generator/
 .settings/
 lib/
+openapitools.json
 target/

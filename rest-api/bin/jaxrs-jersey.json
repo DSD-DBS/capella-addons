@@ -1,0 +1,10 @@
+{
+    "apiPackage": "com.db.capella.api",
+    "hideGenerationTimestamp": true,
+    "implFolder": "src",
+    "invokerPackage": "com.db.capella.api",
+    "library": "jersey3",
+    "modelPackage": "com.db.capella.model",
+    "sourceFolder": "src",
+    "useJakartaEe": true
+}
