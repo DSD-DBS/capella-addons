@@ -76,4 +76,6 @@ Bundle-ClassPath: .,
  lib/swagger-models-1.6.14.jar,
  lib/swagger-models-jakarta-2.2.15.jar,
  lib/validation-api-1.1.0.Final.jar
-Import-Package: org.eclipse.ui
+Import-Package: org.eclipse.ui,
+ org.eclipse.ui.part,
+ org.eclipse.core.resources
