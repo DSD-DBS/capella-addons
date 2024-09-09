@@ -181,6 +181,30 @@ paths:
           description: Project saved successfully
         '404':
           description: Project not found
+  /projects/{project_name}/diagram-editors:
+    get:
+      tags:
+        - Diagrams
+      summary: Get a list of all open diagram editors for a project by name
+      operationId: getDiagramEditorsByProjectName
+      parameters:
+        - name: project_name
+          in: path
+          required: true
+          description: Unique name of the project
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of open diagram editors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiagramEditor'
+        '404':
+          description: Project not found
   /projects/{project_name}/diagrams:
     get:
       tags:
