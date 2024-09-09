@@ -14,7 +14,7 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
 
 public class Main implements IStartup {
-    public static final String BASE_URI = "http://localhost:5007/api/v1";
+    public static final String BASE_URI = "http://0.0.0.0:5007/api/v1";
 
     public static void log(int severity, String message, Throwable exception) {
         Bundle bundle = FrameworkUtil.getBundle(Main.class);
