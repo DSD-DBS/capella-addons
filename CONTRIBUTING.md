@@ -1,4 +1,9 @@
 <!--
+ ~ Copyright DB InfraGO AG and contributors
+ ~ SPDX-License-Identifier: Apache-2.0
+ -->
+
+<!--
   Copyright DB InfraGO AG and contributors
   SPDX-License-Identifier: Apache-2.0
 -->
@@ -55,8 +60,8 @@ We you just want to build and not debug a plugin you can mount a local macOS
 Capella installation to `/opt/capella`.
 
 To be able to debug a plugin during development run the container via the
-following command where a Linux Capella with an appropiate architecture (x86_64
-or aarch64 depending on the Docker host) is mounted to `/opt/capella`:
+following command where a Linux Capella with an appropriate architecture
+(x86_64 or aarch64 depending on the Docker host) is mounted to `/opt/capella`:
 
 ```bash
 docker run --rm -it --hostname=devcontainer \
