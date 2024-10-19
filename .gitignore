@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: CC0-1.0
 
 *.class
+*.egg-info/
 *.jar
 .classpath
 .env
 .mypy_cache/
+.ruff_cache/
 .settings/
 lib/
 target/
