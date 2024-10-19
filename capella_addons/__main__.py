@@ -1,26 +1,20 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Tools to build, pack, deploy Eclipse plugins.
-
-The present CLI needs the command line tools `jar` and `mvn` to be installed
-and accessible via the user's PATH.
-
-`jar` is part of the Java Development Kit (JDK) and is used to create the jar
-file of the Eclipse plugin.
-
-`mvn` is the Maven build tool and is used to analyse the dependencies listed
-in the `pom.xml` file to build the `.classpath` file.
-"""
-
+import contextlib
+import json
+import os
 import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 
 import click
 import lxml.builder
 import lxml.etree
+
+import capella_addons
 
 E = lxml.builder.ElementMaker()
 MANIFEST_PATH = pathlib.Path("META-INF/MANIFEST.MF")
@@ -41,8 +35,44 @@ PATH_BLACKLIST = (
 
 
 @click.group()
+@click.version_option(
+    version=capella_addons.__version__,
+    prog_name="eclipse-plugin-builders",
+    message="%(prog)s %(version)s",
+)
 def main() -> None:
-    """Console script for eclipse_plugin_builders."""
+    """Console tools to develop, build, pack, and deploy Capella addons.
+
+    The present CLI needs the command line tools `jar` and `mvn` to be
+    installed and accessible via the user's PATH.
+
+    `jar` is part of the Java Development Kit (JDK) and is used to
+    create the jar file for a Capella addon.
+
+    `mvn` is the Maven build tool and is used to analyse the
+    dependencies listed in the `pom.xml` file to build the `.classpath`
+    file for a Capella addon project.
+    """
+
+
+def _read_response_from_eclipse_jdt_ls(process):
+    while True:
+        stdout = process.stdout.readline()
+        stderr = process.stderr.readline()
+        if not stdout and not stderr:
+            continue
+        print(stdout.decode("utf-8").strip(), file=sys.stdout)
+        print(stderr.decode("utf-8").strip(), file=sys.stderr)
+
+
+def _send_remote_procedure_request_to_eclipse_jdt_ls(process, method, params):
+    """Send a remote procedure request to the Eclipse JDT language server."""
+    request = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+    message = json.dumps(request)
+    content_length = len(message)
+    communication_string = f"Content-Length: {content_length}\r\n\r\n{message}"
+    process.stdin.write(communication_string.encode("utf-8"))
+    process.stdin.flush()
 
 
 def _third_party_lib_paths() -> list[pathlib.Path]:
@@ -88,18 +118,17 @@ def _output_and_jar_path() -> tuple[pathlib.Path, pathlib.Path]:
     return output_path, jar_path
 
 
-def _read_xml_file(path: str) -> lxml.etree.Element:
+def _read_xml_file(path: str) -> lxml.etree._ElementTree:
     """Read the classpath file."""
     if not pathlib.Path(path).exists():
         click.echo(f"`File {path}` not found.")
         sys.exit(1)
-    tree = lxml.etree.parse(path)
-    return tree
+    return lxml.etree.parse(path)
 
 
 def _collect_target_platform_plugins(
     target_path: pathlib.Path,
-) -> list[lxml.etree.Element]:
+) -> list[lxml.etree._Element]:
     """Add the target platform plugins to the classpath."""
     # Recursively find all src JARs:
     sources: set[pathlib.Path] = set(target_path.glob("**/*.source_*.jar"))
@@ -111,7 +140,7 @@ def _collect_target_platform_plugins(
     libs = list(
         set(dropins_jars + features_jars + jre_jars + plugins_jars) - sources
     )
-    libs = [l for l in libs if not l.name == compute_jar_name()]
+    libs = [lst for lst in libs if lst.name != compute_jar_name()]
     srcs = list(sources)
     target_classpaths = []
     for src in srcs:
@@ -127,10 +156,8 @@ def _collect_target_platform_plugins(
         # get base name
         base = src.name
         lib = parent / base.replace(".source_", "_")
-        try:
+        with contextlib.suppress(ValueError):
             libs.remove(lib)
-        except ValueError:
-            pass
         if lib.is_file() and src.is_file():
             target_classpaths.append(
                 E.classpathentry(
@@ -154,17 +181,50 @@ def _collect_target_platform_plugins(
 
 
 @main.command()
-@click.argument("target_path", type=click.Path(exists=True, dir_okay=True))
-def build_classpath(target_path: pathlib.Path) -> None:
+@click.option(
+    "--java-execution-environment",
+    type=click.Choice(
+        [
+            "JavaSE-17",
+            "JavaSE-18",
+            "JavaSE-19",
+            "JavaSE-20",
+            "JavaSE-21",
+            "JavaSE-22",
+        ]
+    ),
+    required=True,
+    help=(
+        "The Java execution environment to be used. The value must be an"
+        " exact match of the execution environment name as it appears in"
+        " the enumeration named `ExecutionEnvironment` as defined here:"
+        " https://github.com/eclipse-jdtls/eclipse.jdt.ls/wiki/"
+        "Running-the-JAVA-LS-server-from-the-command-line#initialize-request"
+    ),
+)
+@click.argument("filename", type=click.Path(exists=True, dir_okay=True))
+@click.argument(
+    "target_platform_path", type=click.Path(exists=True, dir_okay=True)
+)
+def build_classpath(
+    java_execution_environment: str,
+    filename: pathlib.Path,
+    target_platform_path: pathlib.Path,
+) -> None:
     """Build `.classpath` file.
 
-    Parameters
-    ----------
-    target_path : pathlib.Path
+    \b
+    Arguments
+    ---------
+    filename
+        Any Java project file. The classpath will be built for this
+        project.
+    target_platform_path
         The installation directory of an Eclipse/ Capella application
-        that will be references as target platform to build the classpath.
-    """
-    target_path = pathlib.Path(target_path)
+        that will be referenced as target platform to build the
+        classpath.
+    """  # noqa: D301
+    target_path = pathlib.Path(target_platform_path)
     if not target_path.is_dir():
         click.echo(
             f"Target platform installation dir `{target_path}` not found."
@@ -178,7 +238,7 @@ def build_classpath(target_path: pathlib.Path) -> None:
             path=(
                 "org.eclipse.jdt.launching.JRE_CONTAINER/"
                 "org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/"
-                "JavaSE-17"
+                f"{java_execution_environment}"
             ),
         ),
     ]
@@ -189,9 +249,35 @@ def build_classpath(target_path: pathlib.Path) -> None:
             "dependency:build-classpath",
             f"-Dmdep.outputFile={w.name}",
         ]
+
+        def find_eclipse_jdtls_project_directory() -> pathlib.Path | None:
+            path = pathlib.Path(filename)
+            for parent in path.parents:
+                if (parent / ".project").is_file() and (
+                    parent / "pom.xml"
+                ).is_file():
+                    return parent
+            return None
+
+        project_dir = find_eclipse_jdtls_project_directory()
+        if project_dir is None:
+            raise RuntimeError(
+                "Could not find a valid Eclipse JDTLS project directory."
+                " containing a `.project` and a `pom.xml` file."
+            )
+        os.chdir(project_dir)
+        print(f"Building classpath for project in `{project_dir}`")
         # Run command and wait:
-        subprocess.run(mvn_cmd, check=True)
-    with open(w.name, "r", encoding="utf-8") as tmp:
+        result = subprocess.run(
+            mvn_cmd,
+            capture_output=True,
+            text=True,
+            cwd=project_dir,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stdout)
+    with open(w.name, encoding="utf-8") as tmp:
         # Replace all colons with newlines and sort the lines:
         classpath_3rdparty = tmp.read().replace(":", "\n").splitlines()
     classpath_3rdparty.sort()
@@ -204,6 +290,44 @@ def build_classpath(target_path: pathlib.Path) -> None:
         tree, xml_declaration=True, encoding="utf-8", pretty_print=True
     )
     pathlib.Path(".classpath").write_bytes(xml_string)
+    print("Created `.classpath` file.")
+
+
+@main.command()
+def build_workspace() -> None:
+    """Build (headless) an Eclipse Java project's workspace."""
+    click.echo("Building workspace...")
+    # Start the language server as a subprocess
+    process = subprocess.Popen(
+        [
+            "java",
+            "-Declipse.application=org.eclipse.jdt.ls.core.id1",
+            "-Dosgi.bundles.defaultStartLevel=4",
+            "-Declipse.product=org.eclipse.jdt.ls.core.product",
+            "-Dlog.protocol=true",
+            "-Dlog.level=ALL",
+            "-Xmx1g",
+            "--add-modules=ALL-SYSTEM",
+            "--add-opens",
+            "java.base/java.util=ALL-UNNAMED",
+            "--add-opens",
+            "java.base/java.lang=ALL-UNNAMED",
+            "-jar",
+            "/home/nörd/.local/share/nvim/mason/share/jdtls/plugins/org.eclipse.equinox.launcher.jar",
+            "-configuration",
+            "/home/nörd/.local/share/nvim/mason/packages/jdtls/config_linux_arm",
+            "-data",
+            "/tmp/ws",
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    # Start a thread to read responses from the language server
+    threading.Thread(
+        target=_read_response_from_eclipse_jdt_ls, args=(process,), daemon=True
+    ).start()
 
 
 @main.command()
@@ -211,12 +335,13 @@ def build_classpath(target_path: pathlib.Path) -> None:
 def deploy(target_path: pathlib.Path) -> None:
     """Deploy the eclipse plugin.
 
-    Parameters
-    ----------
+    \b
+    Arguments
+    ---------
     target_path : pathlib.Path
         The installation directory of an Eclipse/ Capella application
         where the plugin will be deployed into the subdirectory `dropins`.
-    """
+    """  # noqa: D301
     target_path = pathlib.Path(target_path) / "dropins"
     if not target_path.is_dir():
         click.echo(f"Target directory `{target_path}` not found.")
@@ -256,19 +381,13 @@ def _update_bundle_classpath(
         if inside_bundle_classpath:
             if line.startswith(" "):
                 continue
-            else:
-                inside_bundle_classpath = False
+            inside_bundle_classpath = False
         manifest += line.rstrip() + "\n"
     if bundle_classpath and not found_bundle_classpath:
         if not manifest.endswith("\n"):
             manifest += "\n"
         manifest += bundle_classpath + "\n"
-    # ensure that the maximum line length is not exceeded
-    # max = 72
-    # manifest = "\n".join(
-    #     line[:max] + "\n" + line[max:] if len(line) > max else line
-    #     for line in manifest.splitlines()
-    # )
+    # TODO: ensure that the maximum line length (72) is not exceeded
     MANIFEST_PATH.write_text(manifest, encoding="utf-8")
 
 
