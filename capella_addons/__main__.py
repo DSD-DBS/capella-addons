@@ -18,8 +18,6 @@ import click
 import lxml.builder
 import lxml.etree
 
-import capella_addons
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 response_stdout_generator = itertools.count(1)
@@ -61,11 +59,6 @@ PATH_BLACKLIST = (
 
 
 @click.group()
-@click.version_option(
-    version=capella_addons.__version__,
-    prog_name="eclipse-plugin-builders",
-    message="%(prog)s %(version)s",
-)
 @click.option(
     "-v",
     "--verbose",

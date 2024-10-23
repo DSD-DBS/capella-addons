@@ -14,39 +14,33 @@ env:
   JVM_DIR: /usr/lib/jvm
 
 jobs:
-  # test:
-  #   name: Test
+  # quality:
+  #   name: Ensure code quality
   #   runs-on: ubuntu-latest
   #   steps:
-  #   - name: Test
-  #     run: |-
-  quality:
-    name: Ensure code quality
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install pre-commit
-        run: |-
-          python -m pip install pre-commit
-      - name: Run pre-commit
-        run: |-
-          pre-commit run --all-files
-  setup-build-environment:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.12"
+  #     - name: Install pre-commit
+  #       run: |-
+  #         python -m pip install pre-commit
+  #     - name: Run pre-commit
+  #       run: |-
+  #         pre-commit run --all-files
+  build-addons:
     strategy:
       matrix:
         capella:
           - version: "6.0.0"
             jdk:
               name: "jdk-17.0.6+10"
-              url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_aarch64_linux_hotspot_17.0.6_10.tar.gz"
-              # url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.6_10.tar.gz"
+              # url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_aarch64_linux_hotspot_17.0.6_10.tar.gz"
+              url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.6_10.tar.gz"
           # - version: "6.1.0"
           #   jdk:
           #     name: "jdk-17.0.6+10"
@@ -55,11 +49,14 @@ jobs:
           #   jdk:
           #     name: "jdk-17.0.11+9"
           #     url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.11%2B9/OpenJDK17U-jdk_x64_linux_hotspot_17.0.11_9.tar.gz"
-    name: Setup build environment for Capella ${{ matrix.capella.version }}
-    needs: [quality]
+        addon:
+          - rest-api
+    name: Setup build environment for Capella ${{ matrix.capella.version }} and build addon ${{ matrix.addon }}
+    # needs: [quality]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python
@@ -74,7 +71,7 @@ jobs:
               ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella.version }}-selected-dropins-main \
               bash -c "cp -r /opt/capella /tmp/capella_${{ matrix.capella.version }}"
           fi
-      - name: Install JDKs
+      - name: Install JDK
         run: |-
           JVM_DIR=/usr/lib/jvm
           TMP_JDK=/tmp/jdk.tar.gz
@@ -86,7 +83,6 @@ jobs:
           JDK_DIR_NAME=$(tar tf $TMP_JDK | head -n 1)
           [[ -d $JDK_DIR_NAME ]] && rm -rf $JDK_DIR_NAME
           tar xzf $TMP_JDK
-          mv $JVM_DIR/jdk-* /usr/lib/jvm/jdk
           rm $TMP_JDK
           # done
       - name: Install Eclipse JDT language server
@@ -99,22 +95,6 @@ jobs:
           fi
           tar xzf jdtls.tar.gz
           rm *.tar.gz
-  build-addons:
-    name: Build addons
-    needs: [quality, setup-build-environment]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        capella_version:
-          - '6.0.0'
-          # - '6.1.0'
-          # - '7.0.0'
-        addon:
-          - rest-api
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       # - name: Install `capella-addons` CLI tool
       #   run: |-
       #     pip install .
@@ -128,7 +108,7 @@ jobs:
           python ../capella_addons/__main__.py build-classpath \
             --java-execution-environment=JavaSE-17 \
             $(find . -type f -name "Main.java") \
-            /tmp/capella_${{ matrix.capella_version }}
+            /tmp/capella_${{ matrix.capella.version }}
           cat .classpath
       - name: Build workspace
         run: |-
@@ -147,9 +127,6 @@ jobs:
           /usr/lib/jvm/${{ matrix.capella.jdk.name }} \
           /usr/lib/jvm/jdk-17.0.6+10 \
           /tmp/jdtls
-      - name: Release addon
-        run: |-
-          cd ${{ matrix.addon }}
       - name: Create release
         id: create_release
         uses: actions/create-release@v1
