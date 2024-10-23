@@ -102,8 +102,7 @@ def _third_party_lib_paths() -> list[pathlib.Path]:
     """Return the paths to the third-party libraries."""
     classpath_root = _read_xml_file(".classpath")
     third_party_lib_paths = classpath_root.xpath(
-        'classpathentry[@kind="lib" and '
-        'not(starts-with(@path, "/opt/capella_6.0.0"))]/@path'
+        'classpathentry[@kind="lib"]/@path'
     )
     return sorted([pathlib.Path(p) for p in third_party_lib_paths])
 
@@ -608,6 +607,7 @@ def build_workspace(
             status = response.get("result", BuildWorkspaceStatus.FAILED.value)
             if status == BuildWorkspaceStatus.SUCCEED.value:
                 click.echo("Build of workspace succeeded.")
+                sys.exit(0)
             elif status == BuildWorkspaceStatus.CANCELLED.value:
                 click.echo("Build of workspace cancelled.")
             elif status == BuildWorkspaceStatus.WITH_ERROR.value:
@@ -682,7 +682,12 @@ def _update_bundle_classpath(
 
 @main.command()
 @click.argument("java_home", type=click.Path(exists=True, dir_okay=True))
-def package(java_home: pathlib.Path) -> None:
+@click.argument(
+    "target_platform_path", type=click.Path(exists=True, dir_okay=True)
+)
+def package(
+    java_home: pathlib.Path, target_platform_path: pathlib.Path
+) -> None:
     """Package the eclipse plugin.
 
     \b
@@ -690,12 +695,20 @@ def package(java_home: pathlib.Path) -> None:
     ---------
     java_home : pathlib.Path
         The path to the Java home directory.
+    target_platform_path
+        The installation directory of an Eclipse/ Capella application
+        that will be referenced as target platform to build the
+        classpath.
     """  # noqa: D301
     lib_dir = pathlib.Path("lib")
     if lib_dir.is_dir():
         shutil.rmtree(lib_dir)
     lib_dir.mkdir()
-    third_party_lib_paths = _third_party_lib_paths()
+    third_party_lib_paths = [
+        p
+        for p in _third_party_lib_paths()
+        if not p.is_relative_to(target_platform_path)
+    ]
     if third_party_lib_paths:
         for path in third_party_lib_paths:
             dest = lib_dir / path.name
