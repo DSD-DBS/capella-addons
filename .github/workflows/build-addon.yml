@@ -109,7 +109,6 @@ jobs:
             --java-execution-environment=JavaSE-17 \
             $(find . -type f -name "Main.java") \
             /tmp/capella_${{ matrix.capella.version }}
-          cat .classpath
       - name: Build workspace
         run: |-
           cd ${{ matrix.addon }}
@@ -124,17 +123,15 @@ jobs:
           cd ${{ matrix.addon }}
           python ../capella_addons/__main__.py -v \
           package \
-          /usr/lib/jvm/${{ matrix.capella.jdk.name }} \
-          /usr/lib/jvm/jdk-17.0.6+10 \
-          /tmp/jdtls
+          /usr/lib/jvm/jdk-17.0.6+10
       - name: Create release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ matrix.addon }}.${{ github.ref }}
+          release_name: ${{ matrix.addon }} ${{ github.ref }}
           draft: false
           prerelease: false
       - name: Publish release

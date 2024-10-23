@@ -608,6 +608,7 @@ def build_workspace(
             status = response.get("result", BuildWorkspaceStatus.FAILED.value)
             if status == BuildWorkspaceStatus.SUCCEED.value:
                 click.echo("Build of workspace succeeded.")
+                sys.exit(0)
             elif status == BuildWorkspaceStatus.CANCELLED.value:
                 click.echo("Build of workspace cancelled.")
             elif status == BuildWorkspaceStatus.WITH_ERROR.value:
