@@ -18,8 +18,6 @@ import click
 import lxml.builder
 import lxml.etree
 
-import capella_addons
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 response_stdout_generator = itertools.count(1)
@@ -61,11 +59,6 @@ PATH_BLACKLIST = (
 
 
 @click.group()
-@click.version_option(
-    version=capella_addons.__version__,
-    prog_name="eclipse-plugin-builders",
-    message="%(prog)s %(version)s",
-)
 @click.option(
     "-v",
     "--verbose",
@@ -615,6 +608,7 @@ def build_workspace(
             status = response.get("result", BuildWorkspaceStatus.FAILED.value)
             if status == BuildWorkspaceStatus.SUCCEED.value:
                 click.echo("Build of workspace succeeded.")
+                sys.exit(0)
             elif status == BuildWorkspaceStatus.CANCELLED.value:
                 click.echo("Build of workspace cancelled.")
             elif status == BuildWorkspaceStatus.WITH_ERROR.value:
