@@ -56,7 +56,7 @@ jobs:
           #     name: "jdk-17.0.11+9"
           #     url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.11%2B9/OpenJDK17U-jdk_x64_linux_hotspot_17.0.11_9.tar.gz"
     name: Setup build environment for Capella ${{ matrix.capella.version }}
-    # needs: [quality]
+    needs: [quality]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,10 +66,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install `capella-addons` CLI tool
-        run: |-
-          pip install .
-          pip show capella-addons
       - name: Install Capella from capelladocker-images
         run: |-
           docker pull ghcr.io/dsd-dbs/capella-dockerimages/capella/remote:${{ matrix.capella.version }}-selected-dropins-main
@@ -105,7 +101,7 @@ jobs:
           rm *.tar.gz
   build-addons:
     name: Build addons
-    needs: [setup-build-environment]
+    needs: [quality, setup-build-environment]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -116,10 +112,20 @@ jobs:
         addon:
           - rest-api
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # - name: Install `capella-addons` CLI tool
+      #   run: |-
+      #     pip install .
+      #     pip show capella-addons
+      - name: Install dependencies for `capella-addons` CLI tool
+        run: |-
+          pip install click lxml
       - name: Build `.classpath` file
         run: |-
           cd ${{ matrix.addon }}
-          python -m capella_addons build-classpath \
+          python ../capella_addons/__main__.py build-classpath \
             --java-execution-environment=JavaSE-17 \
             $(find . -type f -name "Main.java") \
             /tmp/capella_${{ matrix.capella_version }}
@@ -128,8 +134,38 @@ jobs:
         run: |-
           cd ${{ matrix.addon }}
           rm -rf target
-          python -m capella_addons -v \
+          python ../capella_addons/__main__.py -v \
           build-workspace \
           --java-execution-environment=JavaSE-17 \
           /usr/lib/jvm/jdk-17.0.6+10 \
           /tmp/jdtls
+      - name: Package addon
+        run: |-
+          cd ${{ matrix.addon }}
+          python ../capella_addons/__main__.py -v \
+          package \
+          /usr/lib/jvm/${{ matrix.capella.jdk.name }} \
+          /usr/lib/jvm/jdk-17.0.6+10 \
+          /tmp/jdtls
+      - name: Release addon
+        run: |-
+          cd ${{ matrix.addon }}
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Publish release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ matrix.addon }}/target/*.jar
+          asset_name: com.deutschebahn.${{ matrix.addon }}_${{ github.ref }}.jar
+          asset_content_type: application/java-archive
