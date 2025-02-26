@@ -11,6 +11,10 @@ build-backend = "setuptools.build_meta"
 [project]
 dynamic = ["version"]
 
+# dedicated manually managed version for the CLI, since we tag with ADDON_NAME/ADDON_VERSION
+# which is not understood by setuptools_scm
+version = "0.1.0"
+
 name = "capella-addons"
 description = "Tools to develop Capella addons"
 readme = "README.md"
@@ -162,9 +166,6 @@ max-complexity = 14
 [tool.setuptools]
 platforms = ["any"]
 zip-safe = false
-
-[tool.setuptools_scm]
-# This section must exist for setuptools_scm to work
 
 [tool.setuptools.packages.find]
 include = ["capella_addons", "capella_addons.*"]
