@@ -9,8 +9,6 @@ requires = ["setuptools>=64", "setuptools_scm[toml]>=3.4", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-dynamic = ["version"]
-
 # dedicated manually managed version for the CLI, since we tag with ADDON_NAME/ADDON_VERSION
 # which is not understood by setuptools_scm
 version = "0.1.0"
