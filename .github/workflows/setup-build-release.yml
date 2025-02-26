@@ -147,7 +147,7 @@ jobs:
         if: github.event_name == 'push' && github.ref_type == 'tag'
         uses: ncipollo/release-action@v1.14.0
         with:
-          name: ${addon} ${version}
+          name: ${{ github.ref_name }}
           artifacts: ${addon}/target/*.jar
           allowUpdates: true
           tag: ${{ github.ref_name }}
