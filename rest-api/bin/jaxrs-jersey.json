@@ -1,0 +1,10 @@
+{
+    "apiPackage": "com.deutschebahn.capella.api",
+    "hideGenerationTimestamp": true,
+    "implFolder": "src",
+    "invokerPackage": "com.deutschebahn.capella.api",
+    "library": "jersey3",
+    "modelPackage": "com.deutschebahn.capella.model",
+    "sourceFolder": "src",
+    "useJakartaEe": true
+}
